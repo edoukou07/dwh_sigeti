@@ -1,0 +1,43 @@
+=== RAPPORT DE SANTÉ DWH SIGETI === 
+Date génération: 26/10/2025 11:51:36,79 
+ 
+=== 1. INFRASTRUCTURE === 
+                                ?column?                                 
+-------------------------------------------------------------------------
+ PostgreSQL: PostgreSQL 13.18, compiled by Visual C++ build 1942, 64-bit
+(1 row)
+
+ 
+=== 2. BASES DE DONNÉES ===   
+    datname     | pg_size_pretty 
+----------------+----------------
+ sigeti_node_db | 26 MB
+ sigeti_dwh     | 8725 kB
+(2 rows)
+
+ 
+=== 3. STRUCTURE DWH === 
+ table_schema | count 
+--------------+-------
+ cdc          |     4
+ monitoring   |     2
+ dwh          |    12
+(3 rows)
+
+ 
+=== 4. DONNÉES === 
+ERREUR:  la colonne « tablename » n'existe pas
+LINE 1: SELECT schemaname||'.'||tablename, n_tup_ins+n_tup_upd as li...
+                                ^
+ 
+=== 5. CDC STATUS === 
+ table_source | derniere_sync | est_actif 
+--------------+---------------+-----------
+(0 rows)
+
+ 
+=== 6. MONITORING === 
+ nom_table | statut | derniere_maj 
+-----------+--------+--------------
+(0 rows)
+
