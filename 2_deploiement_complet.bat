@@ -87,8 +87,8 @@ if %errorlevel% neq 0 (
 echo   ✅ Base cible %DB_DWH% accessible
 
 echo   Vérification fichiers SQL...
-if not exist "migration_dwh_sigeti_complet.sql" (
-    echo   ❌ Fichier migration_dwh_sigeti_complet.sql manquant
+if not exist "deploiement_dwh_consolide.sql" (
+    echo   ❌ Fichier deploiement_dwh_consolide.sql manquant
     pause
     exit /b 1
 )
@@ -138,43 +138,17 @@ if %errorlevel% equ 0 (
     exit /b 1
 )
 
-echo   Déploiement tables, vues et fonctions...
-"%PGBIN%\psql.exe" -U %PGUSER% -h %PGHOST% -p %PGPORT% -d %DB_DWH% -f "migration_dwh_sigeti_complet.sql"
+echo   Déploiement consolidé DWH complet (Structure + Données + Vues BI)...
+"%PGBIN%\psql.exe" -U %PGUSER% -h %PGHOST% -p %PGPORT% -d %DB_DWH% -f "deploiement_dwh_consolide.sql"
 if %errorlevel% equ 0 (
-    echo   ✅ Structure DWH déployée
+    echo   ✅ Déploiement consolidé terminé avec succès
+    echo     - Structure DWH déployée
+    echo     - Données migrées depuis la source  
+    echo     - 18 vues BI créées
 ) else (
-    echo   ❌ Erreur déploiement structure
+    echo   ❌ Erreur dans le déploiement consolidé
     pause
     exit /b 1
-)
-
-:: =============================================================================
-:: ÉTAPE 4: MIGRATION DES DONNÉES DEPUIS LA SOURCE
-:: =============================================================================
-echo.
-echo [4/8] Migration des données depuis la source...
-
-echo   Analyse de la base source...
-"%PGBIN%\psql.exe" -U %PGUSER% -h %PGHOST% -p %PGPORT% -d %DB_SOURCE% -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';" >nul 2>&1
-
-echo   Migration des données de référence...
-
-:: Migration dimension temps (toujours nécessaire)
-echo     - Dimension temps...
-"%PGBIN%\psql.exe" -U %PGUSER% -h %PGHOST% -p %PGPORT% -d %DB_DWH% -c "INSERT INTO dwh.dim_temps (date_complete, annee, mois, jour) SELECT CURRENT_DATE, 2025, 1, 1 WHERE NOT EXISTS (SELECT 1 FROM dwh.dim_temps LIMIT 1);" >nul 2>&1
-
-:: Migration données opérationnelles si mode FULL
-if /i "%ETL_MODE%"=="FULL" (
-    echo     - Migration complète des données réelles...
-    echo       * Activation extension dblink...
-    "%PGBIN%\psql.exe" -U %PGUSER% -h %PGHOST% -p %PGPORT% -d %DB_DWH% -c "CREATE EXTENSION IF NOT EXISTS dblink;" >nul 2>&1
-    
-    echo       * Migration dimensions et faits depuis sigeti_node_db...
-    "%PGBIN%\psql.exe" -U %PGUSER% -h %PGHOST% -p %PGPORT% -d %DB_DWH% -f migration_donnees_reelles.sql
-    
-    echo   ✅ Données réelles migrées (mode FULL)
-) else (
-    echo   ⏭️  Migration incrémentale (mode INCREMENTAL)
 )
 
 :: =============================================================================
@@ -196,15 +170,13 @@ if /i "%CDC_ENABLED%"=="true" (
 )
 
 :: =============================================================================
-:: ÉTAPE 6: CRÉATION DES INDICATEURS ET VUES
+:: ÉTAPE 4: VÉRIFICATION POST-DÉPLOIEMENT
 :: =============================================================================
 echo.
-echo [6/8] Création des indicateurs et vues...
+echo [4/8] Vérification post-déploiement...
 
-echo   Vues de synthèse...
-"%PGBIN%\psql.exe" -U %PGUSER% -h %PGHOST% -p %PGPORT% -d %DB_DWH% -c "SELECT 'Vues disponibles' as info;" >nul 2>&1
-
-echo   ✅ Vues créées
+echo   Vérification des vues créées...
+"%PGBIN%\psql.exe" -U %PGUSER% -h %PGHOST% -p %PGPORT% -d %DB_DWH% -c "SELECT COUNT(*) as nb_vues_indicateurs FROM pg_views WHERE schemaname = 'dwh';"
 
 :: =============================================================================
 :: ÉTAPE 7: INITIALISATION MONITORING
