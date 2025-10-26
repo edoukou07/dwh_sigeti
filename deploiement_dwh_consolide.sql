@@ -329,6 +329,49 @@ ON CONFLICT (entreprise_id) DO UPDATE SET
     statut_entreprise = EXCLUDED.statut_entreprise,
     date_modification = CURRENT_TIMESTAMP;
 
+-- Migration Opérateurs depuis sigeti_node_db
+INSERT INTO dwh.dim_operateurs (
+    operateur_id, nom_operateur, prenom_operateur, fonction, departement,
+    niveau_acces, email, telephone, date_embauche, est_actif
+)
+SELECT DISTINCT * FROM dblink(
+    'host=localhost port=5432 dbname=sigeti_node_db user=postgres password=postgres',
+    'SELECT 
+        id as operateur_id,
+        COALESCE(nom, ''Non spécifié'') as nom_operateur,
+        COALESCE(prenoms, ''Non spécifié'') as prenom_operateur,
+        COALESCE(profession, ''Opérateur'') as fonction,
+        ''SIGETI'' as departement,
+        ''Utilisateur'' as niveau_acces,
+        COALESCE(email, '''') as email,
+        COALESCE(telephone, '''') as telephone,
+        COALESCE(created_at::date, CURRENT_DATE) as date_embauche,
+        CASE WHEN deleted_at IS NULL THEN true ELSE false END as est_actif
+    FROM operateurs 
+    WHERE id IS NOT NULL'
+) AS source(
+    operateur_id INTEGER,
+    nom_operateur VARCHAR(100),
+    prenom_operateur VARCHAR(100),
+    fonction VARCHAR(100),
+    departement VARCHAR(100),
+    niveau_acces VARCHAR(50),
+    email VARCHAR(200),
+    telephone VARCHAR(20),
+    date_embauche DATE,
+    est_actif BOOLEAN
+)
+ON CONFLICT (operateur_id) DO UPDATE SET
+    nom_operateur = EXCLUDED.nom_operateur,
+    prenom_operateur = EXCLUDED.prenom_operateur,
+    fonction = EXCLUDED.fonction,
+    departement = EXCLUDED.departement,
+    niveau_acces = EXCLUDED.niveau_acces,
+    email = EXCLUDED.email,
+    telephone = EXCLUDED.telephone,
+    est_actif = EXCLUDED.est_actif,
+    date_modification = CURRENT_TIMESTAMP;
+
 -- =====================================================================
 -- PARTIE 3: CRÉATION DES 18 VUES D'INDICATEURS BI
 -- =====================================================================
